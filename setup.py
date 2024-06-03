@@ -20,9 +20,9 @@ setup(
     zip_safe=True,
     author="Tony Najjar",
     author_email="tony.najjar.1997@gmail.com",
-    maintainer="Tony Najjar",
-    maintainer_email="tony.najjar.1997@gmail.com",
-    license="MIT",
+    maintainer="Ander González",
+    maintainer_email="ander.gonzalez@ikerlan.es",
+    license="Apache-2.0",
     tests_require=["pytest"],
     entry_points={
         "console_scripts": [

@@ -16,16 +16,18 @@ class HoldKeyTeleop(Teleop):
         )
         self.key_listener.start()
         self.keys_bindings = {
-            "w": (self.LINEAR_MAX, 0.0),
-            "s": (-self.LINEAR_MAX, 0.0),
-            "a": (0.0, self.ANGULAR_MAX),
-            "d": (0.0, -self.ANGULAR_MAX),
+            "w": (self.LINEAR_MAX, None, None),
+            "s": (-self.LINEAR_MAX, None, None),
+            "a": (None, None, +self.LINEAR_MAX),
+            "d": (None, None, -self.LINEAR_MAX),
+            "q": (None, +self.ANGULAR_MAX, None),
+            "e": (None, -self.ANGULAR_MAX, None),
         }
         self.special_keys_bindings = {
-            Key.up: (self.LINEAR_MAX, 0.0),
-            Key.down: (-self.LINEAR_MAX, 0.0),
-            Key.left: (0.0, self.ANGULAR_MAX),
-            Key.right: (0.0, -self.ANGULAR_MAX),
+            Key.up: (self.LINEAR_MAX, None, None),
+            Key.down: (-self.LINEAR_MAX, None, None),
+            Key.left: (None, self.ANGULAR_MAX, None),
+            Key.right: (None, -self.ANGULAR_MAX, None),
         }
         self.get_logger().info(
             f"""
@@ -37,7 +39,13 @@ WARNING: This node will take commands even if your terminal is not in focus!
 
 Controls:
 
-WASD or Arrows to move
+WASD
+    W/S -> +/- X
+    A/D -> +/- Y
+    Q/E -> +/- RZ
+or Arrows
+    UP/DOWN -> +/- X
+    LEFT/RIGHT -> +/- RZ
 Any other key to stop
 CTRL-C or q to quit
 
@@ -61,8 +69,10 @@ Max Angular Speed: +/-{self.ANGULAR_MAX} rad/s
             if key in self.keys_bindings:
                 if key == "w" or key == "s":
                     self.write_twist(linear=0.0)
-                elif key == "a" or key == "d":
+                elif key == "q" or key == "e":
                     self.write_twist(angular=0.0)
+                elif key == "a" or key == "d":
+                    self.write_twist(lateral=0.0)
 
     def update_twist(self, key):
         binding = None
@@ -72,8 +82,6 @@ Max Angular Speed: +/-{self.ANGULAR_MAX} rad/s
             else:
                 self.write_twist(0.0, 0.0)
         else:
-            if key.char == "q":
-                os.kill(os.getpid(), signal.SIGINT)
             if key.char in self.keys_bindings:
                 binding = self.keys_bindings[key.char]
             else:
@@ -81,7 +89,8 @@ Max Angular Speed: +/-{self.ANGULAR_MAX} rad/s
         if binding is not None:
             new_linear = binding[0]
             new_angular = binding[1]
-            self.write_twist(new_linear, new_angular)
+            new_lateral = binding[2]
+            self.write_twist(new_linear, new_angular, new_lateral)
 
     def _is_special_key(self, key):
         try:

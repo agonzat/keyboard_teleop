@@ -14,7 +14,7 @@ class Teleop(Node, ABC):
 
         self.declare_parameter("twist_stamped_enabled", False)
         self.declare_parameter("robot_base_frame", "base_link")
-        self.declare_parameter("linear_max", 1.0)
+        self.declare_parameter("linear_max", 0.3)
         self.declare_parameter("angular_max", 1.0)
         self.declare_parameter("publish_rate", 10.0)
         self.LINEAR_MAX = self.get_parameter("linear_max").value
@@ -37,12 +37,13 @@ class Teleop(Node, ABC):
         self.create_timer(rate, self._publish)
         self.linear = 0.0
         self.angular = 0.0
+        self.lateral = 0.0
 
     @abstractmethod
     def update_twist(self, *args):
         pass
 
-    def write_twist(self, linear=None, angular=None):
+    def write_twist(self, linear=None, angular=None, lateral=None):
         if linear is not None:
             if abs(linear) <= self.LINEAR_MAX:
                 self.linear = linear
@@ -57,27 +58,35 @@ class Teleop(Node, ABC):
                 self.get_logger().error(
                     f"Trying to set a angular speed {angular} outside of allowed range of [{-self.ANGULAR_MAX}, {self.ANGULAR_MAX}]"
                 )
+        if lateral is not None:
+            if abs(lateral) <= self.LINEAR_MAX:
+                self.lateral = lateral
+            else:
+                self.get_logger().error(
+                    f"Trying to set a lateral speed {lateral} outside of allowed range of [{-self.LINEAR_MAX}, {self.LINEAR_MAX}]"
+                )
         self._update_screen()
 
-    def _make_twist_unstamped(self, linear, angular):
+    def _make_twist_unstamped(self, linear, angular, lateral):
         twist = Twist()
         twist.linear.x = linear
+        twist.linear.y = lateral
         twist.angular.z = angular
         return twist
 
-    def _make_twist_stamped(self, linear, angular):
+    def _make_twist_stamped(self, linear, angular, lateral):
         twist_stamped = TwistStamped()
         twist_stamped.header.stamp = self.get_clock().now().to_msg()
         twist_stamped.header.frame_id = self._robot_base_frame
-        twist_stamped.twist = self._make_twist_unstamped(linear, angular)
+        twist_stamped.twist = self._make_twist_unstamped(linear, angular, lateral)
         return twist_stamped
 
     def _publish(self):
-        twist = self._make_twist(self.linear, self.angular)
+        twist = self._make_twist(self.linear, self.angular, self.lateral)
         self.publisher_.publish(twist)
 
     def _update_screen(self):
-        sys.stdout.write(f"Linear: {self.linear:.2f}, Angular: {self.angular:.2f}\r")
+        sys.stdout.write(f"Linear: {self.linear:.2f}, Lateral: {self.lateral:.2f}, Angular: {self.angular:.2f}\r")
 
     def _emergency_stop(self):
-        self.publisher_.publish(self._make_twist(0.0, 0.0))
+        self.publisher_.publish(self._make_twist(0.0, 0.0, 0.0))
